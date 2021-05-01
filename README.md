@@ -36,4 +36,4 @@ $ source env.sh
 ## Links
 - [Stanford site](https://web.stanford.edu/class/cs143/)
 - [Course ad edx](https://learning.edx.org/course/course-v1:StanfordOnline+SOE.YCSCS1+3T2020/home)
-
+- [Cool syntax hl for vim](https://alfix.gitlab.io/coding/2018/04/03/vim-syntax-highlight-cool.html)
