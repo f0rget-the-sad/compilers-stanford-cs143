@@ -11,12 +11,14 @@ install it on Linux
 wget https://courses.edx.org/asset-v1:StanfordOnline+SOE.YCSCS1+1T2020+type@asset+block@student-dist.tar.gz -O resources.tar.gz
 ```
 
-2. Install packages (If you only intend to use the C++ version, you don't need
-the jdk). For Ubuntu:
+2. Install packages. For Ubuntu:
 
 ```bash
-$ sudo apt-get install flex bison build-essential csh openjdk-6-jdk libxaw7-dev
+$ sudo apt-get install flex-old bison build-essential csh libxaw7-dev
 ```
+
+NOTE: if flex-old not a thing, use flex. Key point flex should be 2.5.x to
+work with course assignments examples.
 
 Also if u do file bin/.i686/spim, u will notice it's 32-bit LSB executable,
 dynamically linked
@@ -36,4 +38,5 @@ $ source env.sh
 ## Links
 - [Stanford site](https://web.stanford.edu/class/cs143/)
 - [Course ad edx](https://learning.edx.org/course/course-v1:StanfordOnline+SOE.YCSCS1+3T2020/home)
+- [youtube lectures](https://www.youtube.com/playlist?list=PLoCMsyE1cvdUZRe1udlyjpzTww1U5olL2)
 - [Cool syntax hl for vim](https://alfix.gitlab.io/coding/2018/04/03/vim-syntax-highlight-cool.html)
