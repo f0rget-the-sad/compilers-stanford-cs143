@@ -50,7 +50,11 @@ extern YYSTYPE cool_yylval;
  * Define names for regular expressions here.
  */
 
-DARROW          =>
+DARROW		=>
+DIGIT		[0-9]
+LETTER		[a-zA-Z]
+ID		{LETTER}|{DIGIT}|'_'
+ // ID		[a-zA-Z0-9_]
 
 %%
 
@@ -58,11 +62,26 @@ DARROW          =>
   *  Nested comments
   */
 
+ /*
+  *  The single-character operators.
+  */
+"+"			{ return '+'; }
+"/"			{ return '/'; }
+"-"			{ return '-'; }
+"*"			{ return '*'; }
+"="			{ return '='; }
 
  /*
   *  The multiple-character operators.
   */
 {DARROW}		{ return (DARROW); }
+ /*
+  * Integers are non-empty strings of digits 0-9.
+  */
+{DIGIT}+		{
+	cool_yylval.symbol = inttable.add_string(yytext);
+	return INT_CONST;
+}
 
  /*
   * Keywords are case-insensitive except for the values true and false,
@@ -93,8 +112,18 @@ f(?i:alse)		{
 	cool_yylval.boolean = false;
 	return BOOL_CONST;
 }
+ /*
+ * Identifiers are strings (other than keywords) consisting of letters, digits,
+ * and the underscore character. Type identifiers begin with a capital letter;
+ * object identifiers begin with a lower case letter.
+ */
+[a-z]{ID}*		{
+	cool_yylval.symbol = idtable.add_string(yytext);
+	return OBJECTID;
+}
 
- /* Counting new lines */
+ /*
+  * Counting new lines */
 \n			{ curr_lineno += 1; }
 
 
