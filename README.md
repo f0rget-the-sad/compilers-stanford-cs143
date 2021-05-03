@@ -14,11 +14,8 @@ wget https://courses.edx.org/asset-v1:StanfordOnline+SOE.YCSCS1+1T2020+type@asse
 2. Install packages. For Ubuntu:
 
 ```bash
-$ sudo apt-get install flex-old bison build-essential csh libxaw7-dev
+$ sudo apt-get install flex bison build-essential csh libxaw7-dev
 ```
-
-NOTE: if flex-old not a thing, use flex. Key point flex should be 2.5.x to
-work with course assignments examples.
 
 Also if u do file bin/.i686/spim, u will notice it's 32-bit LSB executable,
 dynamically linked
