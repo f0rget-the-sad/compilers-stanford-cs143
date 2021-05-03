@@ -43,6 +43,7 @@ extern YYSTYPE cool_yylval;
 /*
  *  Add Your own definitions here
  */
+static int comment_stack = 0;
 
 %}
 
@@ -50,31 +51,69 @@ extern YYSTYPE cool_yylval;
  * Define names for regular expressions here.
  */
 
-DARROW		=>
-DIGIT		[0-9]
-LETTER		[a-zA-Z]
-ID		{LETTER}|{DIGIT}|'_'
- // ID		[a-zA-Z0-9_]
+%START OPEN_COMMENT
+DARROW			=>
+ASSIGN			<-
+LE				<=
+DIGIT			[0-9]
+LETTER			[a-zA-Z]
+ID				[a-zA-Z0-9_]
+WHITESPACES		[ \f\r\t\v]
 
 %%
 
  /*
   *  Nested comments
   */
+"(*"			{
+	comment_stack += 1;
+	BEGIN OPEN_COMMENT;
+}
+
+<OPEN_COMMENT>[^(*)\n]* { ;} /* Eat non-comment delimiters */
+
+<OPEN_COMMENT>"*)" {
+	// decrement happens within `OPEN_COMMENT` regex, this ensures that we
+	// can't go below 0
+	comment_stack -= 1;
+	if (comment_stack == 0) {
+		BEGIN 0;
+	}
+}
+
+
+ /*
+  * Single line comments
+  */
+"--".*			{ ;}
 
  /*
   *  The single-character operators.
   */
-"+"			{ return '+'; }
-"/"			{ return '/'; }
-"-"			{ return '-'; }
-"*"			{ return '*'; }
-"="			{ return '='; }
+"+"				{ return '+'; }
+"/"				{ return '/'; }
+"-"				{ return '-'; }
+"*"				{ return '*'; }
+"="				{ return '='; }
+"<"				{ return '<'; }
+"."				{ return '.'; }
+"~"				{ return '~'; }
+","				{ return ','; }
+";"				{ return ';'; }
+":"				{ return ':'; }
+"("				{ return '('; }
+")"				{ return ')'; }
+"@"				{ return '@'; }
+"{"				{ return '{'; }
+"}"				{ return '}'; }
 
  /*
   *  The multiple-character operators.
   */
-{DARROW}		{ return (DARROW); }
+{DARROW}		{ return DARROW; }
+{ASSIGN}		{ return ASSIGN; }
+{LE}			{ return LE; }
+
  /*
   * Integers are non-empty strings of digits 0-9.
   */
@@ -121,10 +160,20 @@ f(?i:alse)		{
 	cool_yylval.symbol = idtable.add_string(yytext);
 	return OBJECTID;
 }
+[A-Z]{ID}*		{
+	cool_yylval.symbol = idtable.add_string(yytext);
+	return TYPEID;
+}
 
  /*
-  * Counting new lines */
-\n			{ curr_lineno += 1; }
+  * Counting new lines
+  */
+\n				{ curr_lineno += 1; }
+ /*
+  * Skipping rest of whitespaces
+  */
+{WHITESPACES}+	{ ;}
+
 
 
  /*
@@ -134,5 +183,29 @@ f(?i:alse)		{
   *
   */
 
+ /*
+  * If we are here it's - Error
+  */
+ /*
+  *Special case Errors:
+  */
+"\*)"			{
+	cool_yylval.error_msg = "Unmatched *)";
+	return ERROR;
+}
 
+.				{
+	cool_yylval.error_msg = yytext;
+	return ERROR;
+}
+
+<<EOF>>			{
+	if (comment_stack != 0) {
+		// @TODO: is this fine?
+		comment_stack = 0;
+		cool_yylval.error_msg = "EOF in comment";
+		return ERROR;
+	}
+	return 0;
+}
 %%
