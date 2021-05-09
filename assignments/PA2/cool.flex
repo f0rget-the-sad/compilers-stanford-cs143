@@ -69,7 +69,9 @@ WHITESPACES		[ \f\r\t\v]
 	BEGIN OPEN_COMMENT;
 }
 
-<OPEN_COMMENT>[^(*)\n]* { ;} /* Eat non-comment delimiters */
+<OPEN_COMMENT>[^*(\n]* { ;} /* Eat non-comment delimiters */
+<OPEN_COMMENT>"*"[^*)\n]* { ;}  /* Eat up '*'s not followed by ')'s */
+<OPEN_COMMENT>"("[^*\n]* { ;}  /* Eat up '('s not followed by '*'s */
 
 <OPEN_COMMENT>"*)" {
 	// decrement happens within `OPEN_COMMENT` regex, this ensures that we
