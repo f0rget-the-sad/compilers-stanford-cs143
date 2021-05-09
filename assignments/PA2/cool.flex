@@ -43,6 +43,18 @@ extern YYSTYPE cool_yylval;
 /* Used to track nested comments */
 static int comment_stack = 0;
 
+static bool is_null_in_string = false;
+static bool is_string_overflow = false;
+
+static inline bool add_char_to_string_buf(char c) {
+	if (is_string_overflow || (string_buf_ptr - string_buf) >= MAX_STR_CONST) {
+		is_string_overflow = true;
+		return false;
+	}
+	*string_buf_ptr++ = c;
+	return true;
+}
+
 %}
 
 /*
@@ -190,25 +202,69 @@ f(?i:alse)		{
  /* saw closing quote - all done */
 <STR>\"			{
 	BEGIN(INITIAL);
-	*string_buf_ptr = '\0';
-	// printf("parsed: %s\n", string);
+	if (is_null_in_string) {
+		is_null_in_string = false;
+		cool_yylval.error_msg = "String contains null character.";
+		return ERROR;
+	}
+
+	// add null termination at the end
+	add_char_to_string_buf('\0');
+	if (is_string_overflow) {
+		is_string_overflow = false;
+		cool_yylval.error_msg = "String constant too long";
+		return ERROR;
+	}
 	cool_yylval.symbol = stringtable.add_string(string_buf);
 	return STR_CONST;
 }
 
+<STR>\n			{
+	BEGIN(INITIAL);
+	curr_lineno += 1;
+	cool_yylval.error_msg = "Unterminated string constant";
+	return ERROR;
+}
+
+<STR>\\b			{
+	add_char_to_string_buf('\b');
+}
+<STR>\\t			{
+	add_char_to_string_buf('\t');
+}
+<STR>\\n			{
+	add_char_to_string_buf('\n');
+}
+<STR>\\f			{
+	add_char_to_string_buf('\f');
+}
+
+<STR><<EOF>>		{
+	BEGIN(INITIAL);
+	cool_yylval.error_msg = "EOF in string constant";
+	return ERROR;
+}
+
  /* not sure about \n */
 <STR>\\(.|\n)	{
-	// printf("match1: %s\n", yytext);
-	*string_buf_ptr++ = yytext[1];
+	char escaped_char = yytext[1]; // yytext[0] - is a '\', 1 - is real char
+	add_char_to_string_buf(escaped_char);
+	if (escaped_char == '\n') {
+		curr_lineno += 1;
+	} else if (escaped_char == '\0') {
+		is_null_in_string = true;
+	}
 }
 
 <STR>[^\\\n\"]+	{
-	// printf("match2: %s\n", yytext);
-	char *yptr = yytext;
-	while ( *yptr ) {
-		*string_buf_ptr++ = *yptr++;
+	for (int i = 0; i < yyleng; i++) {
+		if (yytext[i] == '\0') {
+			is_null_in_string = true;
+		}
+		if (!add_char_to_string_buf(yytext[i])) {
+			break;
+		}
 	}
-	// printf("stringbuf: %s\n", string_buf_ptr);
 }
 
  /*
