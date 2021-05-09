@@ -40,9 +40,7 @@ extern int verbose_flag;
 
 extern YYSTYPE cool_yylval;
 
-/*
- *  Add Your own definitions here
- */
+/* Used to track nested comments */
 static int comment_stack = 0;
 
 %}
@@ -51,6 +49,7 @@ static int comment_stack = 0;
  * Define names for regular expressions here.
  */
 
+%x STR
 %START OPEN_COMMENT
 DARROW			=>
 ASSIGN			<-
@@ -132,7 +131,7 @@ WHITESPACES		[ \f\r\t\v]
 (?i:fi)			{ return FI; }
 (?i:if)			{ return IF; }
 (?i:in)			{ return IN; }
-(?i:inherits)		{ return INHERITS; }
+(?i:inherits)	{ return INHERITS; }
 (?i:isvoid)		{ return ISVOID; }
 (?i:let)		{ return LET; }
 (?i:loop)		{ return LOOP; }
@@ -174,14 +173,41 @@ f(?i:alse)		{
   */
 {WHITESPACES}+	{ ;}
 
-
-
  /*
   *  String constants (C syntax)
-  *  Escape sequence \c is accepted for all characters c. Except for 
+  *  Escape sequence \c is accepted for all characters c. Except for
   *  \n \t \b \f, the result is c.
   *
   */
+ /* saw opening quote - start parsing */
+\"				{
+	string_buf_ptr = string_buf;
+	BEGIN(STR);
+}
+
+ /* saw closing quote - all done */
+<STR>\"			{
+	BEGIN(INITIAL);
+	*string_buf_ptr = '\0';
+	// printf("parsed: %s\n", string);
+	cool_yylval.symbol = stringtable.add_string(string_buf);
+	return STR_CONST;
+}
+
+ /* not sure about \n */
+<STR>\\(.|\n)	{
+	// printf("match1: %s\n", yytext);
+	*string_buf_ptr++ = yytext[1];
+}
+
+<STR>[^\\\n\"]+	{
+	// printf("match2: %s\n", yytext);
+	char *yptr = yytext;
+	while ( *yptr ) {
+		*string_buf_ptr++ = *yptr++;
+	}
+	// printf("stringbuf: %s\n", string_buf_ptr);
+}
 
  /*
   * If we are here it's - Error
