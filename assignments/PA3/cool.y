@@ -137,6 +137,8 @@
     %type <feature> feature
     %type <formal> formal
     %type <formals> formal_list
+    %type <expression> expression
+    %type <expressions> expression_list
     
     /* Precedence declarations go here. */
     
@@ -188,8 +190,8 @@
      * */
     { $$ = attr($1, $3, no_expr()); }
     /* method */
-    | OBJECTID '(' formal_list ')' ':' TYPEID '{' BOOL_CONST '}' ';'
-    { $$ = method($1, $3, $6, bool_const(true)); }
+    | OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}' ';'
+    { $$ = method($1, $3, $6, $8); }
     ;
 
     /* Formal list */
@@ -209,10 +211,18 @@
     { $$ = formal($1, $3); }
     ;
 
+    /* Expression list */
+
+    /* Expression */
+    expression:
+    /* true | false */
+    BOOL_CONST
+    { $$ = bool_const($1); }
+    ;
 
     /* end of grammar */
     %%
-    
+
     /* This function is called automatically when Bison detects a parse error. */
     void yyerror(char *s)
     {
