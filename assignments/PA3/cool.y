@@ -133,10 +133,10 @@
     %type <program> program
     %type <classes> class_list
     %type <class_> class
-    
-    /* You will want to change the following line. */
     %type <features> feature_list
     %type <feature> feature
+    %type <formal> formal
+    %type <formals> formal_list
     
     /* Precedence declarations go here. */
     
@@ -174,6 +174,9 @@
     /* single feature */
     | feature
     { $$ = single_Features($1); }
+    /* several features */
+    | feature_list feature
+    { $$ = append_Features($1, single_Features($2)); }
     ;
 
     /*  A feature is either an attribute or a method */
@@ -183,8 +186,29 @@
     /* TODO: calling `no_expr` each time seems not efficient to me,
      * use pointer to the same empty expr each time should be better
      * */
-    {$$ = attr($1, $3, no_expr());}
+    { $$ = attr($1, $3, no_expr()); }
+    /* method */
+    | OBJECTID '(' formal_list ')' ':' TYPEID '{' BOOL_CONST '}' ';'
+    { $$ = method($1, $3, $6, bool_const(true)); }
     ;
+
+    /* Formal list */
+    formal_list:
+    /* empty */
+    { $$ = nil_Formals(); }
+    /* single formal */
+    | formal
+    { $$ = single_Formals($1); }
+    /* several formals */
+    | formal_list ',' formal
+    { $$ = append_Formals($1, single_Formals($3)); }
+
+    /* Formal ID: TYPE*/
+    formal:
+    OBJECTID ':' TYPEID
+    { $$ = formal($1, $3); }
+    ;
+
 
     /* end of grammar */
     %%
