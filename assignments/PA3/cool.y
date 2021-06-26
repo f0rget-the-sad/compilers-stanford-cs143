@@ -137,8 +137,8 @@
     %type <feature> feature
     %type <formal> formal
     %type <formals> formal_list
-    %type <expression> expression
-    %type <expressions> expression_list
+    %type <expression> expr
+    /* %type <expressions> expr_list */
     
     /* Precedence declarations go here. */
     
@@ -189,8 +189,11 @@
      * use pointer to the same empty expr each time should be better
      * */
     { $$ = attr($1, $3, no_expr()); }
+    /* attribute with expression */
+    | OBJECTID ':' TYPEID ASSIGN expr ';'
+    { $$ = attr($1, $3, $5); }
     /* method */
-    | OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}' ';'
+    | OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}' ';'
     { $$ = method($1, $3, $6, $8); }
     ;
 
@@ -214,9 +217,54 @@
     /* Expression list */
 
     /* Expression */
-    expression:
+    expr:
+    /*
+    expr[@TYPE].ID( [ expr [[, expr]]∗] )
+    | ID( [ expr [[, expr]]∗] )
+    | if expr then expr else expr fi
+    | while expr loop expr pool
+    | { [[expr; ]]+}
+    | let ID : TYPE [ <- expr ] [[,ID : TYPE [ <- expr ]]]∗ in expr
+    | case expr of [[ID : TYPE => expr; ]]+esac
+    | new TYPE
+    | isvoid expr
+    */
+
+    /* expr + expr */
+    expr '+' expr
+    { $$ = plus($1, $3); }
+    /* expr − expr */
+    | expr '-' expr
+    { $$ = sub($1, $3); }
+    /* expr * expr */
+    | expr '*' expr
+    { $$ = mul($1, $3); }
+    /* expr / expr */
+    | expr '/' expr
+    { $$ = divide($1, $3); }
+    /*
+    | ˜expr
+    | expr < expr
+    | expr <= expr
+    | expr = expr
+    */
+    /* not expr */
+    | NOT expr
+    {$$ = comp($2); }
+    /* (expr) */
+    | '(' expr ')'
+    { $$ = $2 ; }
+    /* ID */
+    | OBJECTID
+    { $$ = object($1); }
+    /* integer */
+    | INT_CONST
+    { $$ = int_const($1); }
+    /* string */
+    | STR_CONST
+    { $$ = string_const($1); }
     /* true | false */
-    BOOL_CONST
+    | BOOL_CONST
     { $$ = bool_const($1); }
     ;
 
