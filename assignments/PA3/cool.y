@@ -138,7 +138,8 @@
     %type <formal> formal
     %type <formals> formal_list
     %type <expression> expr
-    /* %type <expressions> expr_list */
+    %type <expressions> expr_list
+    %type <expression> internal_let
     
     /* Precedence declarations go here. */
     
@@ -215,23 +216,57 @@
     ;
 
     /* Expression list */
+    expr_list:
+    /* empty */
+    {  $$ = nil_Expressions(); }
+    /* single expression */
+    | expr
+    { $$ = single_Expressions($1); }
+    /* several expressions */
+    | expr_list ',' expr
+    { $$ = append_Expressions($1, single_Expressions($3)); }
+    ;
+
+    /* Internal helpers for handling recursive LET definition */
+    /* let ID : TYPE [ <- expr ] [[,ID : TYPE [ <- expr ]]]∗ in expr */
+    internal_let:
+    /* no initialization expression */
+    OBJECTID ':' TYPEID IN expr
+    { $$ = let($1, $3, no_expr(), $5); }
+    /* single initialization expression */
+    | OBJECTID ':' TYPEID ASSIGN expr IN expr
+    { $$ = let($1, $3, $5, $7); }
+    ;
 
     /* Expression */
     expr:
+    /* assign expression
+     * ID <- expr */
+    OBJECTID ASSIGN expr
+    { $$ = assign($1, $3); }
+    /* Static Dispatch
+     * expr@TYPE.ID( [ expr [[, expr]]∗] ) */
+    | expr '@' TYPEID '.' OBJECTID '(' expr_list ')'
+    { $$ = static_dispatch($1, $3, $5, $7); }
+    /* Dispatch
+     * expr[@TYPE].ID( [ expr [[, expr]]∗] ) */
     /*
-    expr[@TYPE].ID( [ expr [[, expr]]∗] )
     | ID( [ expr [[, expr]]∗] )
     | if expr then expr else expr fi
     | while expr loop expr pool
     | { [[expr; ]]+}
-    | let ID : TYPE [ <- expr ] [[,ID : TYPE [ <- expr ]]]∗ in expr
+    */
+    /* LET check `internal_let` for details */
+    | LET internal_let
+    { $$ = $2; }
+    /*
     | case expr of [[ID : TYPE => expr; ]]+esac
     | new TYPE
     | isvoid expr
     */
 
     /* expr + expr */
-    expr '+' expr
+    | expr '+' expr
     { $$ = plus($1, $3); }
     /* expr − expr */
     | expr '-' expr
