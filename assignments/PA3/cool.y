@@ -138,12 +138,27 @@
     %type <formal> formal
     %type <formals> formal_list
     %type <expression> expr
-    %type <expressions> expr_list
     %type <expression> internal_let
-    
-    /* Precedence declarations go here. */
-    
-    
+    %type <expressions> expr_list
+    %type <expressions> expr_block
+    %type <case_> branch
+    %type <cases> case_list
+
+
+    /* Precedence declarations
+     * All binary operations are left-associative, with
+     * the exception of assignment, which is right-associative, and the three
+     * comparison operations, which do not associate (cool ref manual 11.1) */
+    %left ASSIGN
+    %left NOT
+    %nonassoc LE '<' '='
+    %left '+' '-'
+    %left '*' '/'
+    %left ISVOID
+    %left '~'
+    %left '@'
+    %left '.'
+
     %%
     /* 
     Save the root of the abstract syntax tree in a global variable.
@@ -227,6 +242,16 @@
     { $$ = append_Expressions($1, single_Expressions($3)); }
     ;
 
+    /* Expressions block */
+    expr_block:
+    /* single expression */
+    expr ';'
+    { $$ = single_Expressions($1); }
+    /* several expressions */
+    | expr ';' expr_block
+    { $$ = append_Expressions(single_Expressions($1), $3); }
+    ;
+
     /* Internal helpers for handling recursive LET definition */
     /* let ID : TYPE [ <- expr ] [[,ID : TYPE [ <- expr ]]]∗ in expr */
     internal_let:
@@ -244,6 +269,19 @@
     { $$ = let($1, $3, $5, $7); }
     ;
 
+    /* Branch */
+    branch:
+    OBJECTID ':' TYPEID DARROW expr ';'
+    { $$ = branch($1, $3, $5); }
+
+    case_list:
+    /* single branch */
+    branch
+    { $$ = single_Cases($1); }
+    /* multiple braches */
+    | case_list branch
+    { $$ = append_Cases($1, single_Cases($2)); }
+
     /* Expression */
     expr:
     /* assign expression
@@ -255,22 +293,36 @@
     | expr '@' TYPEID '.' OBJECTID '(' expr_list ')'
     { $$ = static_dispatch($1, $3, $5, $7); }
     /* Dispatch
-     * expr[@TYPE].ID( [ expr [[, expr]]∗] ) */
-    /*
-    | ID( [ expr [[, expr]]∗] )
-    | if expr then expr else expr fi
-    | while expr loop expr pool
-    | { [[expr; ]]+}
-    */
+     * expr.ID( [ expr [[, expr]]∗] ) */
+    | expr '.' OBJECTID '(' expr_list ')'
+    { $$ = dispatch($1, $3, $5); }
+    /* Dispatch shorthand for self.<id>(<expr>,...,<expr>)
+     * ID( [ expr [[, expr]]∗] ) */
+    | OBJECTID '(' expr_list ')'
+    { $$ = dispatch(object(idtable.add_string("self")), $1, $3); }
+    /* if expr then expr else expr fi */
+    | IF expr THEN expr ELSE expr FI
+    { $$ = cond($2, $4, $6); }
+    /* while expr loop expr pool */
+    | WHILE expr LOOP expr POOL
+    { $$ = loop($2, $4); }
+    /* Block
+     * { [[expr; ]]+} */
+    | '{' expr_block '}'
+    { $$ = block($2); }
+
     /* LET check `internal_let` for details */
     | LET internal_let
     { $$ = $2; }
-    /*
-    | case expr of [[ID : TYPE => expr; ]]+esac
-    | new TYPE
-    | isvoid expr
-    */
-
+    /* case expr of [[ID : TYPE => expr; ]]+esac */
+    | CASE expr OF case_list ESAC
+    { $$ = typcase($2, $4); }
+    /* new TYPE */
+    | NEW TYPEID
+    { $$ = new_($2); }
+    /* isvoid expr */
+    | ISVOID expr
+    { $$ = isvoid($2); }
     /* expr + expr */
     | expr '+' expr
     { $$ = plus($1, $3); }
@@ -283,12 +335,18 @@
     /* expr / expr */
     | expr '/' expr
     { $$ = divide($1, $3); }
-    /*
-    | ˜expr
-    | expr < expr
-    | expr <= expr
-    | expr = expr
-    */
+    /* ˜expr */
+    | '~' expr
+    { $$ = neg($2); }
+    /* expr < expr */
+    | expr '<' expr
+    { $$ = lt($1, $3); }
+    /* expr <= expr */
+    | expr LE expr
+    { $$ = leq($1, $3); }
+    /* expr = expr */
+    | expr '=' expr
+    { $$ = eq($1, $3); }
     /* not expr */
     | NOT expr
     {$$ = comp($2); }
