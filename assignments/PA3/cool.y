@@ -236,6 +236,12 @@
     /* single initialization expression */
     | OBJECTID ':' TYPEID ASSIGN expr IN expr
     { $$ = let($1, $3, $5, $7); }
+    /* multiple initialization exporession, first without */
+    | OBJECTID ':' TYPEID ',' internal_let
+    { $$ = let($1, $3, no_expr(), $5); }
+    /* multiple initialization exporession */
+    | OBJECTID ':' TYPEID ASSIGN expr ',' internal_let
+    { $$ = let($1, $3, $5, $7); }
     ;
 
     /* Expression */
